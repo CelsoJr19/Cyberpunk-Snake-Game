@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cyberpunk Snake</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
@@ -20,6 +20,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            touch-action: manipulation; /* Melhora resposta ao toque */
         }
 
         body {
@@ -30,8 +31,8 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            overflow: hidden;
+            min-height: 100vh; /* Alterado para min-height para permitir scroll se necessário */
+            overflow: hidden; /* Evita scroll durante o jogo */
         }
 
         /* Efeito de Fundo de Grade (Grid) */
@@ -50,19 +51,38 @@
             opacity: 0.5;
         }
 
+        /* Container do Título (Mantendo sua personalização) */
+        .title-container {
+            display: flex;
+            align-items: baseline;
+            gap: 10px;
+            margin-bottom: 5px;
+            flex-wrap: wrap;
+            justify-content: center;
+            z-index: 20;
+        }
+
         h1 {
-            font-size: 3rem;
-            margin-bottom: 10px;
+            font-size: 2.5rem; /* Levemente menor para caber em mobile */
             text-transform: uppercase;
             text-shadow: var(--text-glow), 0 0 20px var(--neon-blue);
-            letter-spacing: 5px;
-            text-align: center;
+            letter-spacing: 3px;
+        }
+
+        .subtitle-neon {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+            text-shadow: var(--text-glow), 0 0 10px rgba(0, 243, 255, 0.5);
+            letter-spacing: 2px;
+            font-weight: 400;
         }
         
         p.instructions {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             color: rgba(255,255,255,0.7);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+            text-align: center;
         }
 
         #game-container {
@@ -70,21 +90,72 @@
             border: 2px solid var(--neon-blue);
             box-shadow: 0 0 20px var(--neon-blue), inset 0 0 20px rgba(0, 243, 255, 0.2);
             background-color: rgba(0, 0, 0, 0.8);
+            /* Responsividade do Canvas */
+            max-width: 95vw; /* Ocupa no máximo 95% da largura da tela */
+            max-height: 60vh; /* Não ocupa mais que 60% da altura */
         }
 
         canvas {
             display: block;
+            width: 100%; /* Ajusta a largura do canvas ao container */
+            height: 100%; /* Ajusta a altura */
         }
 
         #ui-layer {
             margin-top: 15px;
             display: flex;
             gap: 2rem;
-            font-size: 1.2rem;
+            font-size: 1rem;
             text-shadow: 0 0 5px var(--neon-pink);
         }
 
-        /* Overlay de Scanline (Efeito TV antiga) */
+        /* --- CONTROLES MOBILE (Novidade) --- */
+        #mobile-controls {
+            display: none; /* Invisível no PC */
+            grid-template-columns: repeat(3, 60px);
+            grid-template-rows: repeat(2, 60px);
+            gap: 10px;
+            margin-top: 20px;
+            z-index: 20;
+        }
+
+        /* Só mostra os controles em telas menores que 768px (Tablets e Celulares) */
+        @media (max-width: 768px) {
+            #mobile-controls {
+                display: grid;
+            }
+            h1 { font-size: 1.8rem; }
+            .subtitle-neon { font-size: 1rem; }
+        }
+
+        .control-btn {
+            background: rgba(0, 243, 255, 0.1);
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            border-radius: 10px;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 0 10px var(--neon-blue);
+        }
+
+        .control-btn:active {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+
+        /* Posicionamento dos botões em Cruz */
+        .btn-up { grid-column: 2; grid-row: 1; }
+        .btn-left { grid-column: 1; grid-row: 2; }
+        .btn-down { grid-column: 2; grid-row: 2; }
+        .btn-right { grid-column: 3; grid-row: 2; }
+
+
+        /* Scanlines */
         .scanlines {
             position: fixed;
             top: 0;
@@ -118,20 +189,20 @@
             border: 1px solid var(--neon-pink);
             padding: 2rem;
             text-align: center;
-            display: none; /* Começa invisível */
+            display: none;
             box-shadow: 0 0 30px var(--neon-pink);
-            z-index: 5;
-            min-width: 200px;
+            z-index: 30;
+            min-width: 280px;
         }
 
         .game-over-modal h2 {
             color: var(--neon-pink);
-            font-size: 2rem;
+            font-size: 1.8rem;
             margin-bottom: 1rem;
             text-shadow: 0 0 10px var(--neon-pink);
         }
 
-        button {
+        button.restart-btn {
             background: transparent;
             border: 1px solid var(--neon-green);
             color: var(--neon-green);
@@ -145,40 +216,10 @@
             margin-top: 10px;
         }
 
-        button:hover {
+        button.restart-btn:hover {
             background: var(--neon-green);
             color: black;
             box-shadow: 0 0 20px var(--neon-green);
-        }
-
-	/* Estilos para o contêiner do título e subtítulo */
-        .title-container {
-            display: flex; /* Para que os elementos fiquem lado a lado */
-            align-items: baseline; /* Alinha a base dos textos */
-            gap: 10px; /* Espaçamento entre o título e o subtítulo */
-            margin-bottom: 10px; /* Para manter o espaçamento original do título */
-            flex-wrap: wrap; /* Permite que o texto quebre linha em telas menores */
-            justify-content: center; /* Centraliza tudo */
-        }
-
-        .subtitle-neon {
-            font-family: 'Orbitron', sans-serif; /* Mesma fonte do título */
-            color: var(--neon-blue); /* Mesma cor base */
-            font-size: 1.5rem; /* Tamanho menor que o h1 */
-            text-shadow: var(--text-glow), 0 0 10px rgba(0, 243, 255, 0.5); /* Menos glow que o h1 */
-            letter-spacing: 2px; /* Menor espaçamento de letra */
-            font-weight: 400; /* Mais leve que o h1 */
-            margin-left: 5px; /* Ajuste fino de margem */
-        }
-
-        /* Ajuste no h1 existente para remover margem inferior duplicada se houver */
-        h1 {
-            /* Mantenha o que já existe no seu h1, mas remova 'margin-bottom' se ele tiver um */
-            font-size: 3rem;
-            text-transform: uppercase;
-            text-shadow: var(--text-glow), 0 0 20px var(--neon-blue);
-            letter-spacing: 5px;
-            /* Remover esta linha se existir: margin-bottom: 10px; */
         }
     </style>
 </head>
@@ -199,7 +240,7 @@
             <h2>SYSTEM FAILURE</h2>
             <p>Pontuação Final: <span id="finalScore">0</span></p>
             <br>
-            <button onclick="resetGame()">Reiniciar</button>
+            <button class="restart-btn" onclick="resetGame()">Reiniciar</button>
         </div>
     </div>
 
@@ -208,8 +249,14 @@
         <div>HIGHSCORE: <span id="highScoreDisplay">0</span></div>
     </div>
 
+    <div id="mobile-controls">
+        <div class="control-btn btn-up" onclick="handleMobileInput('up')">▲</div>
+        <div class="control-btn btn-left" onclick="handleMobileInput('left')">◀</div>
+        <div class="control-btn btn-down" onclick="handleMobileInput('down')">▼</div>
+        <div class="control-btn btn-right" onclick="handleMobileInput('right')">▶</div>
+    </div>
+
     <script>
-        // Configurações do Jogo
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const scoreElement = document.getElementById('scoreDisplay');
@@ -237,20 +284,17 @@
             bg: '#050505'
         };
 
-        // Correção Crucial: Definir display none explicitamente no JS também
         modal.style.display = 'none';
 
-        // Captura teclas
         document.addEventListener('keydown', changeDirection);
 
         function startGame() {
             if (isGameRunning) return;
             
             isGameRunning = true;
-            velocity = { x: 1, y: 0 }; // Começa indo para direita
+            velocity = { x: 1, y: 0 }; 
             modal.style.display = 'none';
             
-            // Garante que não haja múltiplos intervalos rodando
             if (gameInterval) clearInterval(gameInterval);
             gameInterval = setInterval(gameLoop, 100); 
         }
@@ -264,16 +308,11 @@
             clearInterval(gameInterval);
             isGameRunning = false;
             
-            // Limpa a tela e desenha o estado inicial
             ctx.fillStyle = colors.bg;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             drawFood();
             drawSnake();
             
-            // Foca no canvas para capturar teclado se necessário
-            canvas.focus();
-            
-            // Reinicia imediatamente
             startGame();
         }
 
@@ -285,13 +324,11 @@
         function update() {
             const head = { x: snake[0].x + velocity.x, y: snake[0].y + velocity.y };
 
-            // Atravessar paredes (Teleporte)
             if (head.x < 0) head.x = tileCount - 1;
             if (head.x >= tileCount) head.x = 0;
             if (head.y < 0) head.y = tileCount - 1;
             if (head.y >= tileCount) head.y = 0;
 
-            // Colisão com corpo
             for (let i = 0; i < snake.length; i++) {
                 if (head.x === snake[i].x && head.y === snake[i].y) {
                     gameOver();
@@ -301,12 +338,10 @@
 
             snake.unshift(head);
 
-            // Comer
             if (head.x === food.x && head.y === food.y) {
                 score++;
                 scoreElement.innerText = score;
                 generateFood();
-                // Efeito visual rápido
                 canvas.style.borderColor = colors.food;
                 setTimeout(() => canvas.style.borderColor = colors.snakeHead, 100);
             } else {
@@ -344,7 +379,6 @@
                 x: Math.floor(Math.random() * tileCount),
                 y: Math.floor(Math.random() * tileCount)
             };
-            // Recalcula se a comida nascer em cima da cobra
             for (let part of snake) {
                 if (part.x === food.x && part.y === food.y) {
                     generateFood();
@@ -366,24 +400,37 @@
             modal.style.display = 'block';
         }
 
+        // Função unificada para controle (Teclado)
         function changeDirection(event) {
-            // Previne rolagem da página com setas
             if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(event.code) > -1) {
                 event.preventDefault();
             }
+            
+            // Mapa de teclas para direções
+            const keyMap = {
+                37: 'left',
+                38: 'up',
+                39: 'right',
+                40: 'down'
+            };
 
-            // Inicia o jogo se estiver parado e sem modal
+            if (keyMap[event.keyCode]) {
+                processDirection(keyMap[event.keyCode]);
+            }
+        }
+
+        // Função unificada para controle (Mobile Touch)
+        function handleMobileInput(direction) {
+            // Vibração tátil leve ao tocar (se suportado pelo celular)
+            if (navigator.vibrate) navigator.vibrate(30);
+            processDirection(direction);
+        }
+
+        // Lógica principal de movimento
+        function processDirection(dir) {
             if (!isGameRunning && modal.style.display === 'none') {
                 startGame();
             }
-
-            const keyPressed = event.keyCode;
-            const LEFT = 37;
-            const UP = 38;
-            const RIGHT = 39;
-            const DOWN = 40;
-
-            // Só muda direção se o jogo já começou (para evitar bugs antes do start)
             if (!isGameRunning) return;
 
             const goingUp = velocity.y === -1;
@@ -391,21 +438,20 @@
             const goingRight = velocity.x === 1;
             const goingLeft = velocity.x === -1;
 
-            if (keyPressed === LEFT && !goingRight) {
+            if (dir === 'left' && !goingRight) {
                 velocity = { x: -1, y: 0 };
             }
-            if (keyPressed === UP && !goingDown) {
+            if (dir === 'up' && !goingDown) {
                 velocity = { x: 0, y: -1 };
             }
-            if (keyPressed === RIGHT && !goingLeft) {
+            if (dir === 'right' && !goingLeft) {
                 velocity = { x: 1, y: 0 };
             }
-            if (keyPressed === DOWN && !goingUp) {
+            if (dir === 'down' && !goingUp) {
                 velocity = { x: 0, y: 1 };
             }
         }
 
-        // Renderização inicial
         draw();
     </script>
 </body>
