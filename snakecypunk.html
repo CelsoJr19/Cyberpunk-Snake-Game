@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyberpunk Snake</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+        :root {
+            --bg-color: #050505;
+            --grid-color: #1a1a1a;
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --neon-green: #0aff00;
+            --text-glow: 0 0 10px rgba(0, 243, 255, 0.7);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--neon-blue);
+            font-family: 'Orbitron', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Efeito de Fundo de Grade (Grid) */
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                linear-gradient(transparent 95%, var(--grid-color) 50%),
+                linear-gradient(90deg, transparent 95%, var(--grid-color) 50%);
+            background-size: 20px 20px;
+            z-index: -1;
+            opacity: 0.5;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            text-shadow: var(--text-glow), 0 0 20px var(--neon-blue);
+            letter-spacing: 5px;
+            text-align: center;
+        }
+        
+        p.instructions {
+            margin-bottom: 20px;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.9rem;
+        }
+
+        #game-container {
+            position: relative;
+            border: 2px solid var(--neon-blue);
+            box-shadow: 0 0 20px var(--neon-blue), inset 0 0 20px rgba(0, 243, 255, 0.2);
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui-layer {
+            margin-top: 15px;
+            display: flex;
+            gap: 2rem;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px var(--neon-pink);
+        }
+
+        /* Overlay de Scanline (Efeito TV antiga) */
+        .scanlines {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(
+                to bottom,
+                rgba(255, 255, 255, 0),
+                rgba(255, 255, 255, 0) 50%,
+                rgba(0, 0, 0, 0.2) 50%,
+                rgba(0, 0, 0, 0.2)
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+            animation: scroll 10s linear infinite;
+        }
+
+        @keyframes scroll {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 100%; }
+        }
+
+        .game-over-modal {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid var(--neon-pink);
+            padding: 2rem;
+            text-align: center;
+            display: none; /* Começa invisível */
+            box-shadow: 0 0 30px var(--neon-pink);
+            z-index: 5;
+            min-width: 200px;
+        }
+
+        .game-over-modal h2 {
+            color: var(--neon-pink);
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        button {
+            background: transparent;
+            border: 1px solid var(--neon-green);
+            color: var(--neon-green);
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: 0.3s;
+            text-transform: uppercase;
+            box-shadow: 0 0 5px var(--neon-green);
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: var(--neon-green);
+            color: black;
+            box-shadow: 0 0 20px var(--neon-green);
+        }
+
+	/* Estilos para o contêiner do título e subtítulo */
+        .title-container {
+            display: flex; /* Para que os elementos fiquem lado a lado */
+            align-items: baseline; /* Alinha a base dos textos */
+            gap: 10px; /* Espaçamento entre o título e o subtítulo */
+            margin-bottom: 10px; /* Para manter o espaçamento original do título */
+            flex-wrap: wrap; /* Permite que o texto quebre linha em telas menores */
+            justify-content: center; /* Centraliza tudo */
+        }
+
+        .subtitle-neon {
+            font-family: 'Orbitron', sans-serif; /* Mesma fonte do título */
+            color: var(--neon-blue); /* Mesma cor base */
+            font-size: 1.5rem; /* Tamanho menor que o h1 */
+            text-shadow: var(--text-glow), 0 0 10px rgba(0, 243, 255, 0.5); /* Menos glow que o h1 */
+            letter-spacing: 2px; /* Menor espaçamento de letra */
+            font-weight: 400; /* Mais leve que o h1 */
+            margin-left: 5px; /* Ajuste fino de margem */
+        }
+
+        /* Ajuste no h1 existente para remover margem inferior duplicada se houver */
+        h1 {
+            /* Mantenha o que já existe no seu h1, mas remova 'margin-bottom' se ele tiver um */
+            font-size: 3rem;
+            text-transform: uppercase;
+            text-shadow: var(--text-glow), 0 0 20px var(--neon-blue);
+            letter-spacing: 5px;
+            /* Remover esta linha se existir: margin-bottom: 10px; */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="scanlines"></div>
+
+    <div class="title-container">
+        <h1>Cyber Snake</h1>
+        <span class="subtitle-neon">- By Celso Jr.</span>
+    </div>
+    <p class="instructions">Pressione as SETAS para começar</p>
+    
+    <div id="game-container">
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        
+        <div class="game-over-modal" id="gameOverModal">
+            <h2>SYSTEM FAILURE</h2>
+            <p>Pontuação Final: <span id="finalScore">0</span></p>
+            <br>
+            <button onclick="resetGame()">Reiniciar</button>
+        </div>
+    </div>
+
+    <div id="ui-layer">
+        <div>SCORE: <span id="scoreDisplay">0</span></div>
+        <div>HIGHSCORE: <span id="highScoreDisplay">0</span></div>
+    </div>
+
+    <script>
+        // Configurações do Jogo
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('scoreDisplay');
+        const highScoreElement = document.getElementById('highScoreDisplay');
+        const finalScoreElement = document.getElementById('finalScore');
+        const modal = document.getElementById('gameOverModal');
+
+        const gridSize = 20; 
+        const tileCount = canvas.width / gridSize;
+        
+        let score = 0;
+        let highScore = localStorage.getItem('cyberSnakeHighScore') || 0;
+        highScoreElement.innerText = highScore;
+
+        let velocity = { x: 0, y: 0 };
+        let snake = [{ x: 10, y: 10 }];
+        let food = { x: 15, y: 15 };
+        let gameInterval;
+        let isGameRunning = false;
+
+        const colors = {
+            snakeHead: '#00f3ff',
+            snakeBody: '#0099aa',
+            food: '#ff00ff',
+            bg: '#050505'
+        };
+
+        // Correção Crucial: Definir display none explicitamente no JS também
+        modal.style.display = 'none';
+
+        // Captura teclas
+        document.addEventListener('keydown', changeDirection);
+
+        function startGame() {
+            if (isGameRunning) return;
+            
+            isGameRunning = true;
+            velocity = { x: 1, y: 0 }; // Começa indo para direita
+            modal.style.display = 'none';
+            
+            // Garante que não haja múltiplos intervalos rodando
+            if (gameInterval) clearInterval(gameInterval);
+            gameInterval = setInterval(gameLoop, 100); 
+        }
+
+        function resetGame() {
+            snake = [{ x: 10, y: 10 }];
+            velocity = { x: 0, y: 0 };
+            score = 0;
+            scoreElement.innerText = score;
+            modal.style.display = 'none';
+            clearInterval(gameInterval);
+            isGameRunning = false;
+            
+            // Limpa a tela e desenha o estado inicial
+            ctx.fillStyle = colors.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawFood();
+            drawSnake();
+            
+            // Foca no canvas para capturar teclado se necessário
+            canvas.focus();
+            
+            // Reinicia imediatamente
+            startGame();
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+        }
+
+        function update() {
+            const head = { x: snake[0].x + velocity.x, y: snake[0].y + velocity.y };
+
+            // Atravessar paredes (Teleporte)
+            if (head.x < 0) head.x = tileCount - 1;
+            if (head.x >= tileCount) head.x = 0;
+            if (head.y < 0) head.y = tileCount - 1;
+            if (head.y >= tileCount) head.y = 0;
+
+            // Colisão com corpo
+            for (let i = 0; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) {
+                    gameOver();
+                    return;
+                }
+            }
+
+            snake.unshift(head);
+
+            // Comer
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                scoreElement.innerText = score;
+                generateFood();
+                // Efeito visual rápido
+                canvas.style.borderColor = colors.food;
+                setTimeout(() => canvas.style.borderColor = colors.snakeHead, 100);
+            } else {
+                snake.pop();
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = colors.bg;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            drawFood();
+            drawSnake();
+        }
+
+        function drawSnake() {
+            snake.forEach((part, index) => {
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = index === 0 ? colors.snakeHead : colors.snakeBody;
+                ctx.fillStyle = index === 0 ? colors.snakeHead : colors.snakeBody;
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+                ctx.shadowBlur = 0;
+            });
+        }
+
+        function drawFood() {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = colors.food;
+            ctx.fillStyle = colors.food;
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+            ctx.shadowBlur = 0;
+        }
+
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * tileCount),
+                y: Math.floor(Math.random() * tileCount)
+            };
+            // Recalcula se a comida nascer em cima da cobra
+            for (let part of snake) {
+                if (part.x === food.x && part.y === food.y) {
+                    generateFood();
+                }
+            }
+        }
+
+        function gameOver() {
+            clearInterval(gameInterval);
+            isGameRunning = false;
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('cyberSnakeHighScore', highScore);
+                highScoreElement.innerText = highScore;
+            }
+
+            finalScoreElement.innerText = score;
+            modal.style.display = 'block';
+        }
+
+        function changeDirection(event) {
+            // Previne rolagem da página com setas
+            if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(event.code) > -1) {
+                event.preventDefault();
+            }
+
+            // Inicia o jogo se estiver parado e sem modal
+            if (!isGameRunning && modal.style.display === 'none') {
+                startGame();
+            }
+
+            const keyPressed = event.keyCode;
+            const LEFT = 37;
+            const UP = 38;
+            const RIGHT = 39;
+            const DOWN = 40;
+
+            // Só muda direção se o jogo já começou (para evitar bugs antes do start)
+            if (!isGameRunning) return;
+
+            const goingUp = velocity.y === -1;
+            const goingDown = velocity.y === 1;
+            const goingRight = velocity.x === 1;
+            const goingLeft = velocity.x === -1;
+
+            if (keyPressed === LEFT && !goingRight) {
+                velocity = { x: -1, y: 0 };
+            }
+            if (keyPressed === UP && !goingDown) {
+                velocity = { x: 0, y: -1 };
+            }
+            if (keyPressed === RIGHT && !goingLeft) {
+                velocity = { x: 1, y: 0 };
+            }
+            if (keyPressed === DOWN && !goingUp) {
+                velocity = { x: 0, y: 1 };
+            }
+        }
+
+        // Renderização inicial
+        draw();
+    </script>
+</body>
+</html>
