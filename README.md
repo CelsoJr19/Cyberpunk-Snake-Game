@@ -1,1 +1,1 @@
-Joguinho simples, de navegador, no estilo Cyberpunk
+Joguinho simples, de navegador, no estilo Cyberpunk.
